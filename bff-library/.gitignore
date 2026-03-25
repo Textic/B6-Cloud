@@ -1,0 +1,14 @@
+target/
+bin/
+*.class
+.settings/
+.classpath
+.project
+.factorypath
+.idea/
+*.iml
+.vscode/
+*.log
+*.jar
+*.war
+HELP.md

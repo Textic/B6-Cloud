@@ -1,0 +1,13 @@
+target/
+bin/
+*.class
+.settings/
+.classpath
+.project
+.factorypath
+.idea/
+*.iml
+.vscode/
+azure-functions/
+local.settings.json
+*.log
