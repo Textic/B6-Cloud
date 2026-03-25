@@ -6,7 +6,7 @@
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <azure.functions.maven.plugin.version>1.29.0</azure.functions.maven.plugin.version>
+        <azure.functions.maven.plugin.version>1.32.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.1.0</azure.functions.java.library.version>
         <functionAppName>faas-prestamos</functionAppName>
     </properties>
@@ -25,7 +25,7 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>com.microsoft.azure.functions</groupId>
+                <groupId>com.microsoft.azure</groupId>
                 <artifactId>azure-functions-maven-plugin</artifactId>
                 <version>${azure.functions.maven.plugin.version}</version>
                 <configuration>

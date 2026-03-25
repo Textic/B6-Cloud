@@ -27,7 +27,6 @@ public class UsuariosFunction {
             final ExecutionContext context) {
 
         String method = request.getHttpMethod().toString();
-        context.getLogger().info("Ejecutando función de usuarios: " + method);
 
         try {
             if (method.equalsIgnoreCase("GET")) {
@@ -46,7 +45,6 @@ public class UsuariosFunction {
             }
             return request.createResponseBuilder(HttpStatus.METHOD_NOT_ALLOWED).build();
         } catch (Exception e) {
-            context.getLogger().severe("Error procesando usuarios: " + e.getMessage());
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("{\"error\":\"Error interno del servidor en Azure: " + e.getMessage() + "\"}")
                 .build();
@@ -57,7 +55,7 @@ public class UsuariosFunction {
         List<String> lista = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT * FROM Usuarios")) {
+             ResultSet rs = stmt.executeQuery("SELECT * FROM USUARIOS")) {
             while (rs.next()) {
                 lista.add(String.format("{\"id\":%d,\"nombre\":\"%s\",\"rut\":\"%s\",\"correo\":\"%s\"}",
                         rs.getInt("id"), rs.getString("nombre"), rs.getString("rut"), rs.getString("correo")));
@@ -67,10 +65,10 @@ public class UsuariosFunction {
     }
 
     private void crearUsuario(String json) throws SQLException {
-        String nombre = buscarValor(json, "nombre");
-        String rut = buscarValor(json, "rut");
-        String correo = buscarValor(json, "correo");
-        String sql = "INSERT INTO Usuarios (nombre, rut, correo) VALUES (?, ?, ?)";
+        String nombre = extraerDato(json, "nombre");
+        String rut = extraerDato(json, "rut");
+        String correo = extraerDato(json, "correo");
+        String sql = "INSERT INTO USUARIOS (nombre, rut, correo) VALUES (?, ?, ?)";
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, nombre);
@@ -80,9 +78,12 @@ public class UsuariosFunction {
         }
     }
 
-    private String buscarValor(String json, String key) {
-        int start = json.indexOf("\"" + key + "\"") + key.length() + 4;
-        int end = json.indexOf("\"", start);
-        return json.substring(start, end);
+    private String extraerDato(String json, String llave) {
+        String busqueda = "\"" + llave + "\"";
+        int posLlave = json.indexOf(busqueda);
+        int posDosPuntos = json.indexOf(":", posLlave + busqueda.length());
+        int posInicio = json.indexOf("\"", posDosPuntos) + 1;
+        int posFin = json.indexOf("\"", posInicio);
+        return json.substring(posInicio, posFin);
     }
 }

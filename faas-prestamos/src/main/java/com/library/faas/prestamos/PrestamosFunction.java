@@ -27,7 +27,6 @@ public class PrestamosFunction {
             final ExecutionContext context) {
 
         String method = request.getHttpMethod().toString();
-        context.getLogger().info("Ejecutando función de préstamos: " + method);
 
         try {
             if (method.equalsIgnoreCase("GET")) {
@@ -46,7 +45,6 @@ public class PrestamosFunction {
             }
             return request.createResponseBuilder(HttpStatus.METHOD_NOT_ALLOWED).build();
         } catch (Exception e) {
-            context.getLogger().severe("Error procesando préstamos: " + e.getMessage());
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("{\"error\":\"Error interno del servidor en Azure: " + e.getMessage() + "\"}")
                 .build();
@@ -57,7 +55,7 @@ public class PrestamosFunction {
         List<String> lista = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
              Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT * FROM Prestamos")) {
+             ResultSet rs = stmt.executeQuery("SELECT * FROM PRESTAMOS")) {
             while (rs.next()) {
                 lista.add(String.format("{\"id\":%d,\"id_usuario\":%d,\"id_libro\":%d,\"fecha\":\"%s\",\"estado\":\"%s\"}",
                         rs.getInt("id"), rs.getInt("id_usuario"), rs.getInt("id_libro"), rs.getString("fecha_prestamo"), rs.getString("estado")));
@@ -67,10 +65,10 @@ public class PrestamosFunction {
     }
 
     private void crearPrestamo(String json) throws SQLException {
-        int idUsuario = Integer.parseInt(buscarValorSimple(json, "id_usuario"));
-        int idLibro = Integer.parseInt(buscarValorSimple(json, "id_libro"));
-        String estado = buscarValorString(json, "estado");
-        String sql = "INSERT INTO Prestamos (id_usuario, id_libro, estado) VALUES (?, ?, ?)";
+        int idUsuario = Integer.parseInt(extraerDatoSimple(json, "id_usuario"));
+        int idLibro = Integer.parseInt(extraerDatoSimple(json, "id_libro"));
+        String estado = extraerDatoString(json, "estado");
+        String sql = "INSERT INTO PRESTAMOS (id_usuario, id_libro, estado) VALUES (?, ?, ?)";
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, idUsuario);
@@ -80,16 +78,22 @@ public class PrestamosFunction {
         }
     }
 
-    private String buscarValorSimple(String json, String key) {
-        int start = json.indexOf("\"" + key + "\"") + key.length() + 3;
-        int end = json.indexOf(",", start);
-        if (end == -1) end = json.indexOf("}", start);
-        return json.substring(start, end).trim();
+    private String extraerDatoString(String json, String llave) {
+        String busqueda = "\"" + llave + "\"";
+        int posLlave = json.indexOf(busqueda);
+        int posDosPuntos = json.indexOf(":", posLlave + busqueda.length());
+        int posInicio = json.indexOf("\"", posDosPuntos) + 1;
+        int posFin = json.indexOf("\"", posInicio);
+        return json.substring(posInicio, posFin);
     }
 
-    private String buscarValorString(String json, String key) {
-        int start = json.indexOf("\"" + key + "\"") + key.length() + 4;
-        int end = json.indexOf("\"", start);
-        return json.substring(start, end);
+    private String extraerDatoSimple(String json, String llave) {
+        String busqueda = "\"" + llave + "\"";
+        int posLlave = json.indexOf(busqueda);
+        int posDosPuntos = json.indexOf(":", posLlave + busqueda.length());
+        int posInicio = posDosPuntos + 1;
+        int posFin = json.indexOf(",", posInicio);
+        if (posFin == -1) posFin = json.indexOf("}", posInicio);
+        return json.substring(posInicio, posFin).trim();
     }
 }
