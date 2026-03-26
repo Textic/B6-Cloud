@@ -8,7 +8,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <azure.functions.maven.plugin.version>1.32.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.1.0</azure.functions.java.library.version>
-        <functionAppName>faas-prestamos</functionAppName>
+        <functionAppName>b6funciontex2-are6fadmf0bqdqcx</functionAppName>
     </properties>
     <dependencies>
         <dependency>
@@ -30,13 +30,18 @@
                 <version>${azure.functions.maven.plugin.version}</version>
                 <configuration>
                     <appName>${functionAppName}</appName>
-                    <resourceGroup>java-functions-group</resourceGroup>
-                    <region>westus</region>
-                    <appServicePlanName>java-functions-app-service-plan</appServicePlanName>
+                    <resourceGroup>B6Grupo</resourceGroup>
+                    <region>eastus</region>
                     <runtime>
-                        <os>docker</os>
-                        <image>${functionAppName}:latest</image>
+                        <os>windows</os>
+                        <javaVersion>17</javaVersion>
                     </runtime>
+                    <appSettings>
+                        <property>
+                            <name>FUNCTIONS_EXTENSION_VERSION</name>
+                            <value>~4</value>
+                        </property>
+                    </appSettings>
                 </configuration>
                 <executions>
                     <execution>
