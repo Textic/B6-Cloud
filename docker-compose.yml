@@ -39,8 +39,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      USERS_AZURE_URL: http://az-faas-usuarios:80
-      LOANS_AZURE_URL: http://az-faas-prestamos:80
+      USERS_AZURE_URL: https://b6funciontex-a9fub3dnhccfbufr.eastus-01.azurewebsites.net
+      LOANS_AZURE_URL: https://b6funciontex2-are6fadmf0bqdqcx.eastus-01.azurewebsites.net
     depends_on:
       - az-faas-usuarios
       - az-faas-prestamos

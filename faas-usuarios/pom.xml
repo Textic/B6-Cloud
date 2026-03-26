@@ -8,7 +8,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <azure.functions.maven.plugin.version>1.32.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>3.1.0</azure.functions.java.library.version>
-        <functionAppName>b6funciontex-a9fub3dnhccfbufr</functionAppName>
+        <functionAppName>B6FuncionTex</functionAppName>
     </properties>
     <dependencies>
         <dependency>
@@ -32,16 +32,11 @@
                     <appName>${functionAppName}</appName>
                     <resourceGroup>B6Grupo</resourceGroup>
                     <region>eastus</region>
+                    <appServicePlanName>ASP-B6Grupo-bdff</appServicePlanName>
                     <runtime>
                         <os>windows</os>
                         <javaVersion>17</javaVersion>
                     </runtime>
-                    <appSettings>
-                        <property>
-                            <name>FUNCTIONS_EXTENSION_VERSION</name>
-                            <value>~4</value>
-                        </property>
-                    </appSettings>
                 </configuration>
                 <executions>
                     <execution>
