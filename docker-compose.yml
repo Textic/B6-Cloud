@@ -33,6 +33,30 @@ services:
     depends_on:
       - oracle-db
 
+  az-faas-autores:
+    build: ./faas-autores
+    container_name: az-faas-autores
+    environment:
+      AzureWebJobsStorage: UseDevelopmentStorage=false
+      FUNCTIONS_WORKER_RUNTIME: java
+      DB_URL: jdbc:oracle:thin:@oracle-db:1521/XE
+      DB_USER: SYSTEM
+      DB_PASS: library_pass
+    depends_on:
+      - oracle-db
+
+  az-faas-libros:
+    build: ./faas-libros
+    container_name: az-faas-libros
+    environment:
+      AzureWebJobsStorage: UseDevelopmentStorage=false
+      FUNCTIONS_WORKER_RUNTIME: java
+      DB_URL: jdbc:oracle:thin:@oracle-db:1521/XE
+      DB_USER: SYSTEM
+      DB_PASS: library_pass
+    depends_on:
+      - oracle-db
+
   bff-library:
     build: ./bff-library
     container_name: bff-library
@@ -41,6 +65,10 @@ services:
     environment:
       USERS_AZURE_URL: https://b6funciontex-a9fub3dnhccfbufr.eastus-01.azurewebsites.net
       LOANS_AZURE_URL: https://b6funciontex2-are6fadmf0bqdqcx.eastus-01.azurewebsites.net
+      AUTHORS_AZURE_URL: https://b6funciontex3-eugwesh0c2bsb3cz.eastus-01.azurewebsites.net
+      BOOKS_AZURE_URL: https://b6funciontex4-b9hsc2gzhkhkduc4.eastus-01.azurewebsites.net
     depends_on:
       - az-faas-usuarios
       - az-faas-prestamos
+      - az-faas-autores
+      - az-faas-libros
