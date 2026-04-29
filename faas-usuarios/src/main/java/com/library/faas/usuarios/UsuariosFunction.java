@@ -8,6 +8,8 @@ import com.microsoft.azure.functions.HttpStatus;
 import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
+import com.microsoft.azure.functions.annotation.EventGridTrigger;
+import com.azure.messaging.eventgrid.EventGridEvent;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -19,6 +21,43 @@ public class UsuariosFunction {
     private final String dbUrl = System.getenv("DB_URL");
     private final String dbUser = System.getenv("DB_USER");
     private final String dbPass = System.getenv("DB_PASS");
+
+    @FunctionName("notificarPrestamo")
+    public void notificarPrestamo(
+            @EventGridTrigger(name = "event") EventGridEvent event,
+            final ExecutionContext context) {
+        
+        context.getLogger().info("Evento recibido de Event Grid!");
+        context.getLogger().info("Tipo de evento: " + event.getEventType());
+        context.getLogger().info("Sujeto: " + event.getSubject());
+        
+        if ("Biblioteca.Prestamo.Creado".equals(event.getEventType())) {
+            String payload = event.getData().toString();
+            context.getLogger().info("Procesando préstamo: " + payload);
+            
+            // Simulación de envío de correo
+            String idUsuario = extraerDatoGenerico(payload, "id_usuario");
+            String idLibro = extraerDatoGenerico(payload, "id_libro");
+            
+            context.getLogger().info("SIMULACIÓN: Enviando correo al usuario " + idUsuario + 
+                " por el préstamo del libro " + idLibro);
+        }
+    }
+
+    private String extraerDatoGenerico(String json, String llave) {
+        try {
+            String busqueda = "\"" + llave + "\"";
+            int posLlave = json.indexOf(busqueda);
+            if (posLlave == -1) return "Desconocido";
+            int posDosPuntos = json.indexOf(":", posLlave + busqueda.length());
+            int posInicio = posDosPuntos + 1;
+            int posFin = json.indexOf(",", posInicio);
+            if (posFin == -1) posFin = json.indexOf("}", posInicio);
+            return json.substring(posInicio, posFin).replace("\"", "").trim();
+        } catch (Exception e) {
+            return "Error";
+        }
+    }
 
     @FunctionName("usuarios")
     public HttpResponseMessage run(

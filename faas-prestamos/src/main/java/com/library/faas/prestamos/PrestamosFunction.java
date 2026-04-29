@@ -8,6 +8,11 @@ import com.microsoft.azure.functions.HttpStatus;
 import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
+import com.azure.messaging.eventgrid.EventGridEvent;
+import com.azure.messaging.eventgrid.EventGridPublisherClient;
+import com.azure.messaging.eventgrid.EventGridPublisherClientBuilder;
+import com.azure.core.util.BinaryData;
+import com.azure.core.credential.AzureKeyCredential;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -19,6 +24,8 @@ public class PrestamosFunction {
     private final String dbUrl = System.getenv("DB_URL");
     private final String dbUser = System.getenv("DB_USER");
     private final String dbPass = System.getenv("DB_PASS");
+    private final String eventGridEndpoint = System.getenv("EVENT_GRID_TOPIC_ENDPOINT");
+    private final String eventGridKey = System.getenv("EVENT_GRID_TOPIC_KEY");
 
     @FunctionName("prestamos")
     public HttpResponseMessage run(
@@ -38,9 +45,10 @@ public class PrestamosFunction {
             } else if (method.equalsIgnoreCase("POST")) {
                 String body = request.getBody().orElse("");
                 crearPrestamo(body);
+                enviarEvento(body, context);
                 return request.createResponseBuilder(HttpStatus.CREATED)
                     .header("Content-Type", "application/json; charset=UTF-8")
-                    .body("{\"mensaje\":\"Préstamo registrado exitosamente en Azure\"}")
+                    .body("{\"mensaje\":\"Préstamo registrado exitosamente en Azure y evento enviado\"}")
                     .build();
             }
             return request.createResponseBuilder(HttpStatus.METHOD_NOT_ALLOWED).build();
@@ -48,6 +56,27 @@ public class PrestamosFunction {
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("{\"error\":\"Error interno del servidor en Azure: " + e.getMessage() + "\"}")
                 .build();
+        }
+    }
+
+    private void enviarEvento(String loanData, ExecutionContext context) {
+        try {
+            EventGridPublisherClient<EventGridEvent> client = new EventGridPublisherClientBuilder()
+                .endpoint(eventGridEndpoint)
+                .credential(new AzureKeyCredential(eventGridKey))
+                .buildEventGridEventPublisherClient();
+
+            EventGridEvent event = new EventGridEvent(
+                "Biblioteca/Prestamos",
+                "Biblioteca.Prestamo.Creado",
+                BinaryData.fromString(loanData),
+                "1.0"
+            );
+
+            client.sendEvent(event);
+            context.getLogger().info("Evento enviado a Event Grid: Biblioteca.Prestamo.Creado");
+        } catch (Exception e) {
+            context.getLogger().severe("Error al enviar evento a Event Grid: " + e.getMessage());
         }
     }
 
