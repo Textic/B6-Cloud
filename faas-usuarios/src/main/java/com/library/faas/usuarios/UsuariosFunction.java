@@ -10,6 +10,10 @@ import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
 import com.microsoft.azure.functions.annotation.EventGridTrigger;
 import com.azure.messaging.eventgrid.EventGridEvent;
+import com.azure.messaging.eventgrid.EventGridPublisherClient;
+import com.azure.messaging.eventgrid.EventGridPublisherClientBuilder;
+import com.azure.core.util.BinaryData;
+import com.azure.core.credential.AzureKeyCredential;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -21,6 +25,8 @@ public class UsuariosFunction {
     private final String dbUrl = System.getenv("DB_URL");
     private final String dbUser = System.getenv("DB_USER");
     private final String dbPass = System.getenv("DB_PASS");
+    private final String eventGridEndpoint = System.getenv("EVENT_GRID_TOPIC_ENDPOINT");
+    private final String eventGridKey = System.getenv("EVENT_GRID_TOPIC_KEY");
 
     @FunctionName("notificarPrestamo")
     public void notificarPrestamo(
@@ -28,14 +34,11 @@ public class UsuariosFunction {
             final ExecutionContext context) {
         
         context.getLogger().info("Evento recibido de Event Grid!");
-        context.getLogger().info("Tipo de evento: " + event.getEventType());
-        context.getLogger().info("Sujeto: " + event.getSubject());
         
         if ("Biblioteca.Prestamo.Creado".equals(event.getEventType())) {
             String payload = event.getData().toString();
             context.getLogger().info("Procesando préstamo: " + payload);
             
-            // Simulación de envío de correo
             String idUsuario = extraerDatoGenerico(payload, "id_usuario");
             String idLibro = extraerDatoGenerico(payload, "id_libro");
             
@@ -61,11 +64,12 @@ public class UsuariosFunction {
 
     @FunctionName("usuarios")
     public HttpResponseMessage run(
-            @HttpTrigger(name = "req", methods = {HttpMethod.GET, HttpMethod.POST}, authLevel = AuthorizationLevel.ANONYMOUS, route = "usuarios") 
+            @HttpTrigger(name = "req", methods = {HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE}, authLevel = AuthorizationLevel.ANONYMOUS, route = "usuarios") 
             HttpRequestMessage<Optional<String>> request,
             final ExecutionContext context) {
 
         String method = request.getHttpMethod().toString();
+        String idParam = request.getQueryParameters().get("id");
 
         try {
             if (method.equalsIgnoreCase("GET")) {
@@ -81,12 +85,51 @@ public class UsuariosFunction {
                     .header("Content-Type", "application/json; charset=UTF-8")
                     .body("{\"mensaje\":\"Usuario creado exitosamente en Azure\"}")
                     .build();
+            } else if (method.equalsIgnoreCase("DELETE") && idParam != null) {
+                eliminarUsuario(Integer.parseInt(idParam), context);
+                return request.createResponseBuilder(HttpStatus.OK)
+                    .header("Content-Type", "application/json; charset=UTF-8")
+                    .body("{\"mensaje\":\"Usuario eliminado y evento de limpieza enviado\"}")
+                    .build();
             }
             return request.createResponseBuilder(HttpStatus.METHOD_NOT_ALLOWED).build();
         } catch (Exception e) {
             return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("{\"error\":\"Error interno del servidor en Azure: " + e.getMessage() + "\"}")
                 .build();
+        }
+    }
+
+    private void eliminarUsuario(int id, ExecutionContext context) throws SQLException {
+        String sql = "DELETE FROM USUARIOS WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, id);
+            int affected = pstmt.executeUpdate();
+            if (affected > 0) {
+                enviarEventoEliminacion(id, context);
+            }
+        }
+    }
+
+    private void enviarEventoEliminacion(int idUsuario, ExecutionContext context) {
+        try {
+            EventGridPublisherClient<EventGridEvent> client = new EventGridPublisherClientBuilder()
+                .endpoint(eventGridEndpoint)
+                .credential(new AzureKeyCredential(eventGridKey))
+                .buildEventGridEventPublisherClient();
+
+            EventGridEvent event = new EventGridEvent(
+                "Biblioteca/Usuarios",
+                "Biblioteca.Usuario.Eliminado",
+                BinaryData.fromString("{\"id_usuario\":" + idUsuario + "}"),
+                "1.0"
+            );
+
+            client.sendEvent(event);
+            context.getLogger().info("Evento enviado: Biblioteca.Usuario.Eliminado para ID " + idUsuario);
+        } catch (Exception e) {
+            context.getLogger().severe("Error al enviar evento de eliminación: " + e.getMessage());
         }
     }
 

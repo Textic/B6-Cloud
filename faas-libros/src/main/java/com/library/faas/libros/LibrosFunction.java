@@ -8,6 +8,8 @@ import com.microsoft.azure.functions.HttpStatus;
 import com.microsoft.azure.functions.annotation.AuthorizationLevel;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
+import com.microsoft.azure.functions.annotation.EventGridTrigger;
+import com.azure.messaging.eventgrid.EventGridEvent;
 
 import graphql.ExecutionInput;
 import graphql.ExecutionResult;
@@ -43,8 +45,8 @@ public class LibrosFunction {
 
     private void initGraphQL() {
         String schema = "type Query { listarLibros: [Libro] }" +
-                        "type Mutation { crearLibro(titulo: String!, id_autor: Int!): Libro }" +
-                        "type Libro { id: Int, titulo: String, id_autor: Int }";
+                        "type Mutation { crearLibro(titulo: String!, id_autor: Int!, disponibilidad: Int): Libro }" +
+                        "type Libro { id: Int, titulo: String, id_autor: Int, disponibilidad: Int }";
 
         SchemaParser schemaParser = new SchemaParser();
         TypeDefinitionRegistry typeRegistry = schemaParser.parse(schema);
@@ -54,7 +56,8 @@ public class LibrosFunction {
                 .type("Mutation", builder -> builder.dataFetcher("crearLibro", env -> {
                     String titulo = env.getArgument("titulo");
                     Integer idAutor = env.getArgument("id_autor");
-                    return crearLibro(titulo, idAutor);
+                    Integer disponibilidad = env.getArgument("disponibilidad");
+                    return crearLibro(titulo, idAutor, disponibilidad != null ? disponibilidad : 10);
                 }))
                 .build();
 
@@ -93,6 +96,42 @@ public class LibrosFunction {
         }
     }
 
+    @FunctionName("procesarPrestamo")
+    public void procesarPrestamo(
+            @EventGridTrigger(name = "event") EventGridEvent event,
+            final ExecutionContext context) {
+        
+        if ("Biblioteca.Prestamo.Creado".equals(event.getEventType())) {
+            String payload = event.getData().toString();
+            String idLibro = extraerDatoGenerico(payload, "id_libro");
+            context.getLogger().info("Restando disponibilidad para libro ID: " + idLibro);
+            
+            String sql = "UPDATE LIBROS SET disponibilidad = disponibilidad - 1 WHERE id = ?";
+            try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
+                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, Integer.parseInt(idLibro));
+                pstmt.executeUpdate();
+            } catch (Exception e) {
+                context.getLogger().severe("Error al actualizar disponibilidad: " + e.getMessage());
+            }
+        }
+    }
+
+    private String extraerDatoGenerico(String json, String llave) {
+        try {
+            String busqueda = "\"" + llave + "\"";
+            int posLlave = json.indexOf(busqueda);
+            if (posLlave == -1) return "0";
+            int posDosPuntos = json.indexOf(":", posLlave + busqueda.length());
+            int posInicio = posDosPuntos + 1;
+            int posFin = json.indexOf(",", posInicio);
+            if (posFin == -1) posFin = json.indexOf("}", posInicio);
+            return json.substring(posInicio, posFin).replace("\"", "").trim();
+        } catch (Exception e) {
+            return "0";
+        }
+    }
+
     private List<Map<String, Object>> listarLibros() throws SQLException {
         List<Map<String, Object>> lista = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
@@ -103,18 +142,20 @@ public class LibrosFunction {
                 libro.put("id", rs.getInt("id"));
                 libro.put("titulo", rs.getString("titulo"));
                 libro.put("id_autor", rs.getInt("id_autor"));
+                libro.put("disponibilidad", rs.getInt("disponibilidad"));
                 lista.add(libro);
             }
         }
         return lista;
     }
 
-    private Map<String, Object> crearLibro(String titulo, Integer idAutor) throws SQLException {
-        String sql = "INSERT INTO LIBROS (titulo, id_autor) VALUES (?, ?)";
+    private Map<String, Object> crearLibro(String titulo, Integer idAutor, Integer disponibilidad) throws SQLException {
+        String sql = "INSERT INTO LIBROS (titulo, id_autor, disponibilidad) VALUES (?, ?, ?)";
         try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
              PreparedStatement pstmt = conn.prepareStatement(sql, new String[]{"ID"})) {
             pstmt.setString(1, titulo);
             pstmt.setInt(2, idAutor);
+            pstmt.setInt(3, disponibilidad);
             pstmt.executeUpdate();
             
             try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
@@ -123,6 +164,7 @@ public class LibrosFunction {
                     libro.put("id", generatedKeys.getInt(1));
                     libro.put("titulo", titulo);
                     libro.put("id_autor", idAutor);
+                    libro.put("disponibilidad", disponibilidad);
                     return libro;
                 }
             }

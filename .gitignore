@@ -10,3 +10,4 @@ bin/
 .factorypath
 .env
 docker-compose.override.yml
+guion.txt

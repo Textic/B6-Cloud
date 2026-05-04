@@ -51,6 +51,16 @@ public class LibraryController {
         }
     }
 
+    @DeleteMapping("/usuarios/{id}")
+    public ResponseEntity<String> eliminarUsuario(@PathVariable int id) {
+        try {
+            restTemplate.delete(usersUrl + "/api/usuarios/" + id);
+            return ResponseEntity.ok("{\"mensaje\":\"Solicitud de eliminación enviada\"}");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("{\"error\":\"Falla al eliminar usuario en Azure: " + e.getMessage() + "\"}");
+        }
+    }
+
     @GetMapping("/prestamos")
     public ResponseEntity<String> obtenerPrestamos() {
         try {
@@ -113,7 +123,7 @@ public class LibraryController {
     @GetMapping("/libros")
     public ResponseEntity<String> obtenerLibros() {
         try {
-            String gqlQuery = "{\"query\": \"{ listarLibros { id titulo id_autor } }\"}";
+            String gqlQuery = "{\"query\": \"{ listarLibros { id titulo id_autor disponibilidad } }\"}";
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> entity = new HttpEntity<>(gqlQuery, headers);
@@ -129,10 +139,11 @@ public class LibraryController {
             JsonNode rootNode = objectMapper.readTree(libroJson);
             String titulo = rootNode.get("titulo").asText();
             int idAutor = rootNode.get("id_autor").asInt();
+            int disponibilidad = rootNode.has("disponibilidad") ? rootNode.get("disponibilidad").asInt() : 10;
             
             String gqlMutation = String.format(
-                "{\"query\": \"mutation { crearLibro(titulo: \\\"%s\\\", id_autor: %d) { id titulo id_autor } }\"}",
-                titulo, idAutor
+                "{\"query\": \"mutation { crearLibro(titulo: \\\"%s\\\", id_autor: %d, disponibilidad: %d) { id titulo id_autor disponibilidad } }\"}",
+                titulo, idAutor, disponibilidad
             );
 
             HttpHeaders headers = new HttpHeaders();
