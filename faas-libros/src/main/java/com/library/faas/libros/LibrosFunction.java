@@ -45,7 +45,10 @@ public class LibrosFunction {
 
     private void initGraphQL() {
         String schema = "type Query { listarLibros: [Libro] }" +
-                        "type Mutation { crearLibro(titulo: String!, id_autor: Int!, disponibilidad: Int): Libro }" +
+                        "type Mutation { " +
+                        "  crearLibro(titulo: String!, id_autor: Int!, disponibilidad: Int): Libro, " +
+                        "  actualizarDisponibilidad(id: Int!, disponibilidad: Int!): Libro " +
+                        "}" +
                         "type Libro { id: Int, titulo: String, id_autor: Int, disponibilidad: Int }";
 
         SchemaParser schemaParser = new SchemaParser();
@@ -53,12 +56,18 @@ public class LibrosFunction {
 
         RuntimeWiring wiring = newRuntimeWiring()
                 .type("Query", builder -> builder.dataFetcher("listarLibros", env -> listarLibros()))
-                .type("Mutation", builder -> builder.dataFetcher("crearLibro", env -> {
-                    String titulo = env.getArgument("titulo");
-                    Integer idAutor = env.getArgument("id_autor");
-                    Integer disponibilidad = env.getArgument("disponibilidad");
-                    return crearLibro(titulo, idAutor, disponibilidad != null ? disponibilidad : 10);
-                }))
+                .type("Mutation", builder -> builder
+                    .dataFetcher("crearLibro", env -> {
+                        String titulo = env.getArgument("titulo");
+                        Integer idAutor = env.getArgument("id_autor");
+                        Integer disponibilidad = env.getArgument("disponibilidad");
+                        return crearLibro(titulo, idAutor, disponibilidad != null ? disponibilidad : 10);
+                    })
+                    .dataFetcher("actualizarDisponibilidad", env -> {
+                        int id = env.getArgument("id");
+                        int disp = env.getArgument("disponibilidad");
+                        return actualizarLibroDisp(id, disp);
+                    }))
                 .build();
 
         SchemaGenerator schemaGenerator = new SchemaGenerator();
@@ -147,6 +156,21 @@ public class LibrosFunction {
             }
         }
         return lista;
+    }
+
+    private Map<String, Object> actualizarLibroDisp(int id, int disp) throws SQLException {
+        String sql = "UPDATE LIBROS SET disponibilidad = ? WHERE id = ?";
+        try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, disp);
+            pstmt.setInt(2, id);
+            pstmt.executeUpdate();
+            
+            Map<String, Object> libro = new HashMap<>();
+            libro.put("id", id);
+            libro.put("disponibilidad", disp);
+            return libro;
+        }
     }
 
     private Map<String, Object> crearLibro(String titulo, Integer idAutor, Integer disponibilidad) throws SQLException {

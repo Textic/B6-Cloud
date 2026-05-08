@@ -26,7 +26,7 @@ CREATE TABLE PRESTAMOS (
     id_libro NUMBER NOT NULL,
     fecha_prestamo DATE DEFAULT SYSDATE,
     estado VARCHAR2(20) NOT NULL,
-    CONSTRAINT fk_usuario_az FOREIGN KEY (id_usuario) REFERENCES USUARIOS(id)
+    CONSTRAINT fk_usuario_az FOREIGN KEY (id_usuario) REFERENCES USUARIOS(id) ON DELETE CASCADE
 );
 
 COMMIT;

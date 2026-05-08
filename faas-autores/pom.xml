@@ -42,6 +42,7 @@
                         <os>windows</os>
                         <javaVersion>17</javaVersion>
                     </runtime>
+                    <skipInstaller>true</skipInstaller>
                 </configuration>
                 <executions>
                     <execution>

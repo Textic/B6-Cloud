@@ -54,7 +54,7 @@ public class LibraryController {
     @DeleteMapping("/usuarios/{id}")
     public ResponseEntity<String> eliminarUsuario(@PathVariable int id) {
         try {
-            restTemplate.delete(usersUrl + "/api/usuarios/" + id);
+            restTemplate.delete(usersUrl + "/api/usuarios?id=" + id);
             return ResponseEntity.ok("{\"mensaje\":\"Solicitud de eliminación enviada\"}");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("{\"error\":\"Falla al eliminar usuario en Azure: " + e.getMessage() + "\"}");
@@ -152,6 +152,24 @@ public class LibraryController {
             return restTemplate.postForEntity(booksUrl + "/api/graphql", entity, String.class);
         } catch (Exception e) {
             return ResponseEntity.status(500).body("{\"error\":\"Falla al crear libro en Azure (GraphQL): " + e.getMessage() + "\"}");
+        }
+    }
+
+    @PutMapping("/libros/{id}/disponibilidad")
+    public ResponseEntity<String> actualizarDisponibilidad(@PathVariable int id, @RequestBody Map<String, Integer> body) {
+        try {
+            int nuevaDisp = body.get("disponibilidad");
+            String gqlMutation = String.format(
+                "{\"query\": \"mutation { actualizarDisponibilidad(id: %d, disponibilidad: %d) { id disponibilidad } }\"}",
+                id, nuevaDisp
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> entity = new HttpEntity<>(gqlMutation, headers);
+            return restTemplate.postForEntity(booksUrl + "/api/graphql", entity, String.class);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("{\"error\":\"Falla al actualizar disponibilidad: " + e.getMessage() + "\"}");
         }
     }
 }

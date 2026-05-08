@@ -40,6 +40,13 @@ echo === 6. Creando Suscripcion: Limpiar Prestamos (Prestamos) ===
 for /f "tokens=*" %%i in ('az functionapp function show --name %APP_PRESTAMOS% --resource-group %RG% --function-name limpiarPrestamos --query "id" --output tsv') do set FUNC_ID_PRESTAMOS=%%i
 call az eventgrid event-subscription create --name SubLimpiarPrestamos --source-resource-id "/subscriptions/%SUB_ID%/resourceGroups/%RG%/providers/Microsoft.EventGrid/topics/%TOPIC_NAME%" --endpoint %FUNC_ID_PRESTAMOS% --endpoint-type azurefunction
 
+echo === 7. Configurando variables de entorno en las funciones (Publishers) ===
+echo Actualizando %APP_PRESTAMOS%...
+call az functionapp config appsettings set --name %APP_PRESTAMOS% --resource-group %RG% --settings EVENT_GRID_TOPIC_ENDPOINT=%TOPIC_ENDPOINT% EVENT_GRID_TOPIC_KEY=%TOPIC_KEY%
+
+echo Actualizando %APP_USUARIOS%...
+call az functionapp config appsettings set --name %APP_USUARIOS% --resource-group %RG% --settings EVENT_GRID_TOPIC_ENDPOINT=%TOPIC_ENDPOINT% EVENT_GRID_TOPIC_KEY=%TOPIC_KEY%
+
 echo.
 echo === Proceso finalizado exitosamente ===
 pause
